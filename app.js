@@ -5,6 +5,8 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose=require('mongoose');
 const encrypt=require('mongoose-encryption');
+const bcrypt=require('bcrypt');
+const saltrounds=10;
 
 
 const app = express();  
@@ -34,20 +36,23 @@ app.get("/register",function(req,res){
 });
 
 app.post("/register",function(req,res){
-    const newUser=new User({
-        email:req.body.username,
-        password:req.body.password
-    });
-
-    newUser.save()
-    .then(()=>{
-        res.render("secrets");
-    })
-    .catch(function(err){
-      res.send(err);
-    });
-
+    bcrypt.hash(req.body.password, saltrounds, function(err, hash) {
+        const newUser=new User({
+            email:req.body.username,
+            password:hash
+        });
     
+        newUser.save()
+        .then(()=>{
+            res.render("secrets");
+        })
+        .catch(function(err){
+          res.send(err);
+        });
+    
+        
+    });
+ 
 });
 
 
@@ -57,7 +62,7 @@ app.get("/submit",function(req,res){
 
 app.get("/login",function(req,res){
     res.render("login");
-})
+});
 
 app.post("/login",function(req,res){
     const username=req.body.username;
@@ -66,7 +71,11 @@ app.post("/login",function(req,res){
     .then(function(foundUser){
         if(foundUser){
             if(foundUser.password===password){
-                res.render("secrets");
+                bcrypt.compare(password, foundUser.password, function(err, result) {
+                  if(result===true){
+                    res.render("secrets");
+                  }
+                });
             }
             else{
                 console.log("wrong password");
@@ -79,6 +88,9 @@ app.post("/login",function(req,res){
     })
 });
 
+app.get("/logout",function(req,res){
+    res.redirect("/");
+})
 
 
 app.listen(3000, function() {
